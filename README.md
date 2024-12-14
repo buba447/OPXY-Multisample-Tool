@@ -57,6 +57,8 @@ OPXY\preset\Group Folder\My Awesome Preset.preset
 OPXY\preset\Group Folder\My Second Awesome Preset.preset
 ```
 
+**NOTE After copying samples eject the OP-XY and power cycle the device. For some reason samples don't always load until the device is power cycled.**
+
 Example OPXY
 ![Output Example](imgs/output.png)
 
