@@ -60,98 +60,13 @@ parser.add_argument("--name", required=False, help="Name of the preset.")
 
 args = parser.parse_args()
 
-preset_json = {
-  "engine": {
-    "bendrange": 13653,
-    "highpass": 0,
-    "modulation": {
-      "aftertouch": {
-        "amount": 30719,
-        "target": 4096
-      },
-      "modwheel": {
-        "amount": 32767,
-        "target": 10240
-      },
-      "pitchbend": {
-        "amount": 16383,
-        "target": 0
-      },
-      "velocity": {
-        "amount": 16383,
-        "target": 0
-      }
-    },
-    "params": [
-      16384,
-      16384,
-      16384,
-      16384,
-      16384,
-      16384,
-      16384,
-      16384
-    ],
-    "playmode": "poly",
-    "portamento.amount": 0,
-    "portamento.type": 32767,
-    "transpose": 0,
-    "tuning.root": 0,
-    "tuning.scale": 0,
-    "velocity.sensitivity": 10240,
-    "volume": 16466,
-    "width": 3072
-  },
-  "envelope": {
-    "amp": {
-      "attack": 0,
-      "decay": 20295,
-      "release": 16383,
-      "sustain": 14989
-    },
-    "filter": {
-      "attack": 0,
-      "decay": 16895,
-      "release": 19968,
-      "sustain": 16896
-    }
-  },
-  "fx": {
-    "active": False,
-    "params": [
-      19661,
-      0,
-      7391,
-      24063,
-      0,
-      32767,
-      0,
-      0
-    ],
-    "type": "svf"
-  },
-  "lfo": {
-    "active": False,
-    "params": [
-      19024,
-      32255,
-      4048,
-      17408,
-      0,
-      0,
-      0,
-      0
-    ],
-    "type": "element"
-  },
-  "octave": 0,
-  "platform": "OP-XY",
-  "regions": [
-  ],
-  "type": "multisampler",
-  "version": 4
-}
+def load_preset_json():
+    json_file_path = os.path.join(os.path.dirname(__file__), 'preset.json')
+    with open(json_file_path, "r") as file:
+        data = json.load(file)
+    return data
 
+preset_json = load_preset_json()
 
 def sanitize_name(name):
     """
@@ -283,6 +198,7 @@ if __name__ == "__main__":
     if args.bulk is not None and len(args.bulk):
         bulk_directory = args.bulk
         for d in os.listdir(bulk_directory):
+            preset_json = load_preset_json()
             sub_path = os.path.join(bulk_directory, d)
             if os.path.isdir(sub_path):
                 process_samples(sub_path, args.output, None)
