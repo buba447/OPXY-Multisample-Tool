@@ -203,7 +203,7 @@ def get_wav_info(filename):
     return sample_rate, frame_count
 
 
-def generate_metadata(input_file, output_basename, key):
+def generate_metadata(input_file, output_basename, hi_key, low_key, center):
     """
     Generate the JSON metadata for the given WAV file and key.
     """
@@ -213,13 +213,13 @@ def generate_metadata(input_file, output_basename, key):
 
     metadata = {
         "framecount": frame_count,
-        "hikey": key,
-        "lokey": 0,
+        "hikey": hi_key,
+        "lokey": low_key,
         "loop.crossfade": 0,
         "loop.end": loop_end,
         "loop.onrelease": True,
         "loop.start": loop_start,
-        "pitch.keycenter": key,
+        "pitch.keycenter": center,
         "reverse": False,
         "sample": output_basename,
         "sample.end": frame_count,
@@ -259,12 +259,13 @@ def process_samples(input_dir, output_dir, preset_name):
             base_name, key = parse_filename(filename)
             keys[key] = (base_name, os.path.join(input_dir, filename), filename)
 
+    last_key = 0
     for key in sorted(keys.keys()):
         base_name, wav_file, filename = keys[key]
         wav_name = sanitize_name(filename)
         try:
-
-            metadata = generate_metadata(wav_file, wav_name, key)
+            metadata = generate_metadata(wav_file, wav_name, key, last_key, key)
+            last_key = key + 1
             preset_json['regions'].append(metadata)
             shutil.copy(wav_file, os.path.join(preset_directory, wav_name))
         except Exception as e:
