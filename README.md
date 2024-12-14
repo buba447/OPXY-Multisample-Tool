@@ -60,6 +60,13 @@ OPXY\preset\Group Folder\My Second Awesome Preset.preset
 Example OPXY
 ![Output Example](imgs/output.png)
 
-# License
+## Advanced Usage
+
+Using the `--bulk` command will automatically pack multiple presets. 
+
+Pass a folder containing multiple subfolders of samples into the bulk command along with an output directory.
+The tool will then run the pack command for each subfolder automatically.
+
+## License
 
 MIT License

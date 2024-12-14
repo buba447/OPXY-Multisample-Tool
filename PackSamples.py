@@ -53,7 +53,8 @@ parser = argparse.ArgumentParser(
     description="Generate JSON files for multisample mappings.",
     epilog=""
 )
-parser.add_argument("--input", required=True, help="Directory containing WAV files for processing.")
+parser.add_argument("--input", required=False, help="Directory containing WAV files for processing.")
+parser.add_argument("--bulk", required=False, help="Directory containing nested directories of WAV files for processing.")
 parser.add_argument("--output", required=True, help="Directory to save the generated multisample preset.")
 parser.add_argument("--name", required=False, help="Name of the preset.")
 
@@ -278,4 +279,11 @@ def process_samples(input_dir, output_dir, preset_name):
 
 # Main
 if __name__ == "__main__":
-    process_samples(args.input, args.output, args.name)
+    if args.bulk is not None and len(args.bulk):
+        bulk_directory = args.bulk
+        for d in os.listdir(bulk_directory):
+            sub_path = os.path.join(bulk_directory, d)
+            if os.path.isdir(sub_path):
+                process_samples(sub_path, args.output, None)
+    else:
+        process_samples(args.input, args.output, args.name)
