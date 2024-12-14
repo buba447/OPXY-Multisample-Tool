@@ -1,0 +1,281 @@
+"""OPXY Multisample Tool: Pack Samples
+
+This script is used to pack a collection of multisamples into an instrument preset for the OPXY.
+
+Sample Prep:
+
+    Place your samples in a folder. The naming format for samples follows a format like "Sample Name-[Note Number].wav"
+    Where the note number is a number from 0-127. With 0 being C-1, 127 being G9 and 60 is Middle C.
+
+    Like so
+
+    "InputFolder\My Awesome Sample-48.wav"
+    "InputFolder\My Awesome Sample-60.wav"
+    "InputFolder\My Awesome Sample-64.wav"
+
+    Some samples are named with a note and a velocity.
+    "My Awesome Sample-48-127.wav"
+
+    The OPXY does not currently support velocity mappings.
+    There is no need to rename these. The script will automatically choose the highest velocity for each note.
+
+Usage:
+    python PackSamples.py --input /Path/To/Sample/Directory --output /Path/To/Output/Directory --name "Preset Name"
+    python PackSamples.py --input /Path/To/Sample/Directory --output /Path/To/Output/Directory
+
+    The instrument name can be specified, or it will be inferred from the sample names automatically.
+
+    The resulting instrument pack will be places in the output directory and the audio files will be copied into it.
+    This resulting directory can then be copied into the OPXY 'presets' directory.
+    Instrusments can be grouped into a subdirectory one level deep.
+
+    "\preset\Group Folder\My Awesome Preset.preset"
+    "\preset\Group Folder\My Second Awesome Preset.preset"
+
+Features:
+    - Generates preset JSON for OPXY multisample instrument.
+    - Properly names files according to OPXY naming standards.
+    - Packs JSON and Audio Files into the appropriate file structure for OPXY.
+    - Use the --help flag to display usage information.
+
+License:
+    MIT License
+"""
+
+import os
+import re
+import json
+import subprocess
+import argparse
+import shutil
+
+parser = argparse.ArgumentParser(
+    description="Generate JSON files for multisample mappings.",
+    epilog=""
+)
+parser.add_argument("--input", required=True, help="Directory containing WAV files for processing.")
+parser.add_argument("--output", required=True, help="Directory to save the generated multisample preset.")
+parser.add_argument("--name", required=False, help="Name of the preset.")
+
+args = parser.parse_args()
+
+preset_json = {
+  "engine": {
+    "bendrange": 13653,
+    "highpass": 0,
+    "modulation": {
+      "aftertouch": {
+        "amount": 30719,
+        "target": 4096
+      },
+      "modwheel": {
+        "amount": 32767,
+        "target": 10240
+      },
+      "pitchbend": {
+        "amount": 16383,
+        "target": 0
+      },
+      "velocity": {
+        "amount": 16383,
+        "target": 0
+      }
+    },
+    "params": [
+      16384,
+      16384,
+      16384,
+      16384,
+      16384,
+      16384,
+      16384,
+      16384
+    ],
+    "playmode": "poly",
+    "portamento.amount": 0,
+    "portamento.type": 32767,
+    "transpose": 0,
+    "tuning.root": 0,
+    "tuning.scale": 0,
+    "velocity.sensitivity": 10240,
+    "volume": 16466,
+    "width": 3072
+  },
+  "envelope": {
+    "amp": {
+      "attack": 0,
+      "decay": 20295,
+      "release": 16383,
+      "sustain": 14989
+    },
+    "filter": {
+      "attack": 0,
+      "decay": 16895,
+      "release": 19968,
+      "sustain": 16896
+    }
+  },
+  "fx": {
+    "active": False,
+    "params": [
+      19661,
+      0,
+      7391,
+      24063,
+      0,
+      32767,
+      0,
+      0
+    ],
+    "type": "svf"
+  },
+  "lfo": {
+    "active": False,
+    "params": [
+      19024,
+      32255,
+      4048,
+      17408,
+      0,
+      0,
+      0,
+      0
+    ],
+    "type": "element"
+  },
+  "octave": 0,
+  "platform": "OP-XY",
+  "regions": [
+  ],
+  "type": "multisampler",
+  "version": 4
+}
+
+
+def sanitize_name(name):
+    """
+    Sanitize a string to allow only valid characters for filenames and folder names.
+    """
+    return re.sub(r"[^a-zA-Z0-9 #\-().]+", "", name)
+
+
+def parse_filename(filename):
+    """
+    Parse the filename to extract the base name and key.
+    """
+    match = re.match(r"^(.*?)-?(\d+)(?:-\d+)?\.wav$", filename, re.IGNORECASE)
+    if not match:
+        raise ValueError(f"Filename '{filename}' does not match the expected pattern.")
+
+    base_name = sanitize_name(match.group(1))
+    key = int(match.group(2))
+    return base_name, key
+
+def get_wav_info(filename):
+    """
+    Get sample rate and frame count using `ffprobe`.
+    Modify to use the tool available on your system.
+    """
+    # Use ffprobe (part of ffmpeg) to extract audio details
+    cmd = [
+        "ffprobe",
+        "-v", "error",
+        "-select_streams", "a:0",
+        "-show_entries", "stream=sample_rate,nb_frames,duration",
+        "-of", "json",
+        filename
+    ]
+    result = subprocess.run(cmd, capture_output=True, text=True)
+    if result.returncode != 0:
+        raise RuntimeError(f"Error processing {filename}: {result.stderr}")
+
+    data = json.loads(result.stdout)
+    stream = data["streams"][0]
+
+    sample_rate = int(stream["sample_rate"])
+    if "nb_frames" in stream:
+        frame_count = int(stream["nb_frames"])
+    elif "duration" in stream:
+        frame_count = int(float(stream["duration"]) * sample_rate)
+    else:
+        raise RuntimeError(f"Cannot determine frame count for {filename}.")
+    return sample_rate, frame_count
+
+
+def generate_metadata(input_file, output_basename, key):
+    """
+    Generate the JSON metadata for the given WAV file and key.
+    """
+    sample_rate, frame_count = get_wav_info(input_file)
+    loop_start = frame_count // 4  # Arbitrary, first 25% of the sample
+    loop_end = frame_count * 3 // 4  # Arbitrary, last 25% of the sample
+
+    metadata = {
+        "framecount": frame_count,
+        "hikey": key,
+        "lokey": 0,
+        "loop.crossfade": 0,
+        "loop.end": loop_end,
+        "loop.onrelease": True,
+        "loop.start": loop_start,
+        "pitch.keycenter": key,
+        "reverse": False,
+        "sample": output_basename,
+        "sample.end": frame_count,
+        "tune": 0
+    }
+
+    # Write JSON file
+    return metadata
+
+
+def process_samples(input_dir, output_dir, preset_name):
+    """
+    Process all WAV files in the input directory.
+
+    According to the XY how-to samples are saved like
+    presets/subfolder/name.preset/patch.json
+    """
+
+    filenames = os.listdir(input_dir)
+
+    if preset_name is None or len(preset_name) == 0:
+        # Generate preset name from the sample
+        preset_name, _ = parse_filename(filenames[0])
+
+    print(f'Exporting Samples {preset_name}')
+    preset_name = sanitize_name(preset_name)
+    preset_directory = os.path.join(output_dir, f"{preset_name}.preset")
+
+    os.makedirs(preset_directory, exist_ok=True)
+
+    filenames.sort()
+
+    keys = {}
+
+    for filename in filenames:
+        if filename.lower().endswith(".wav"):
+            base_name, key = parse_filename(filename)
+            keys[key] = (base_name, os.path.join(input_dir, filename), filename)
+
+    for key in sorted(keys.keys()):
+        base_name, wav_file, filename = keys[key]
+        wav_name = sanitize_name(filename)
+        try:
+
+            metadata = generate_metadata(wav_file, wav_name, key)
+            preset_json['regions'].append(metadata)
+            shutil.copy(wav_file, os.path.join(preset_directory, wav_name))
+        except Exception as e:
+            print(f"Error processing {wav_file}: {e}")
+
+    json_file = os.path.join(preset_directory, 'patch.json')
+
+    # Write JSON file
+    with open(json_file, "w") as f:
+        json.dump(preset_json, f)
+    print(f'Generated Patch! You may now copy {preset_name}.preset to the OPXY under \"presets\\PRESET GROUP\\')
+
+# Main
+if __name__ == "__main__":
+    process_samples(args.input, args.output, args.name)
