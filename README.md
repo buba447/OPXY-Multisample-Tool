@@ -46,6 +46,8 @@ The resulting instrument pack will be placed in the output directory and the aud
 
 _NOTE If you are on a Mac ensure that you download the FieldKit app and run it. This enables the Mac to mount the XY._
 
+It's a good idea to create a new empty project on the OP-XY before copying and to power cycle before and after copying.
+
 Plug in your OP-XY. Press `com` and then `4: mtp`
 The OP-XY should then show up as a drive on your computer.
 
