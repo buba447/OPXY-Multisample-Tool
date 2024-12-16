@@ -120,6 +120,8 @@ def start_interactive():
     if midi_device_index == 0:
         midi_output = mido.open_output(name="Virtual Multisampler", virtual=True)
         _ = input("Select \"Virtual Multisampler\" as the midi input device in your DAW. Press Enter when ready.")
+    else:
+        midi_device_index -= 1
     print("\n")
     midi_channel = int(input("MIDI Output Channel (1-16): ")) - 1
     print("\n")
