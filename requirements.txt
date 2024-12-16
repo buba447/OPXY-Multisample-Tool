@@ -1,0 +1,8 @@
+cffi==1.17.1
+mido==1.2.10
+numpy==2.2.0
+packaging==24.2
+pycparser==2.22
+python-rtmidi==1.5.8
+sounddevice==0.5.1
+soundfile==0.12.1

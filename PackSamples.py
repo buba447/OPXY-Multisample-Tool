@@ -43,7 +43,7 @@ License:
 """
 
 import os
-import re
+import Helpers
 import json
 import subprocess
 import argparse
@@ -60,32 +60,9 @@ parser.add_argument("--name", required=False, help="Name of the preset.")
 
 args = parser.parse_args()
 
-def load_preset_json():
-    json_file_path = os.path.join(os.path.dirname(__file__), 'preset.json')
-    with open(json_file_path, "r") as file:
-        data = json.load(file)
-    return data
 
-preset_json = load_preset_json()
+preset_json = Helpers.load_preset_json()
 
-def sanitize_name(name):
-    """
-    Sanitize a string to allow only valid characters for filenames and folder names.
-    """
-    return re.sub(r"[^a-zA-Z0-9 #\-().]+", "", name)
-
-
-def parse_filename(filename):
-    """
-    Parse the filename to extract the base name and key.
-    """
-    match = re.match(r"^(.*?)-(\d+)", filename, re.IGNORECASE)
-    if not match:
-        raise ValueError(f"Filename '{filename}' does not match the expected pattern.")
-
-    base_name = sanitize_name(match.group(1))
-    key = int(match.group(2))
-    return base_name, key
 
 def get_wav_info(filename):
     """
@@ -118,33 +95,6 @@ def get_wav_info(filename):
     return sample_rate, frame_count
 
 
-def generate_metadata(input_file, output_basename, hi_key, low_key, center):
-    """
-    Generate the JSON metadata for the given WAV file and key.
-    """
-    sample_rate, frame_count = get_wav_info(input_file)
-    loop_start = frame_count // 4  # Arbitrary, first 25% of the sample
-    loop_end = frame_count * 3 // 4  # Arbitrary, last 25% of the sample
-
-    metadata = {
-        "framecount": frame_count,
-        "hikey": hi_key,
-        "lokey": low_key,
-        "loop.crossfade": 0,
-        "loop.end": loop_end,
-        "loop.onrelease": True,
-        "loop.start": loop_start,
-        "pitch.keycenter": center,
-        "reverse": False,
-        "sample": output_basename,
-        "sample.end": frame_count,
-        "tune": 0
-    }
-
-    # Write JSON file
-    return metadata
-
-
 def process_samples(input_dir, output_dir, preset_name):
     """
     Process all WAV files in the input directory.
@@ -157,10 +107,10 @@ def process_samples(input_dir, output_dir, preset_name):
 
     if preset_name is None or len(preset_name) == 0:
         # Generate preset name from the sample
-        preset_name, _ = parse_filename(filenames[0])
+        preset_name, _ = Helpers.parse_filename(filenames[0])
 
+    preset_name = Helpers.sanitize_name(preset_name)
     print(f'Exporting Samples {preset_name}')
-    preset_name = sanitize_name(preset_name)
     preset_directory = os.path.join(output_dir, f"{preset_name}.preset")
 
     os.makedirs(preset_directory, exist_ok=True)
@@ -170,15 +120,16 @@ def process_samples(input_dir, output_dir, preset_name):
     keys = {}
 
     for filename in filenames:
-        base_name, key = parse_filename(filename)
+        base_name, key = Helpers.parse_filename(filename)
         keys[key] = (base_name, os.path.join(input_dir, filename), filename)
 
     last_key = 0
     for key in sorted(keys.keys()):
         base_name, wav_file, filename = keys[key]
-        wav_name = sanitize_name(filename)
+        wav_name = Helpers.sanitize_name(filename)
+        sample_rate, frame_count = get_wav_info(wav_file)
         try:
-            metadata = generate_metadata(wav_file, wav_name, key, last_key, key)
+            metadata = Helpers.sample_metadata(frame_count, wav_name, key, last_key, key)
             last_key = key + 1
             preset_json['regions'].append(metadata)
             shutil.copy(wav_file, os.path.join(preset_directory, wav_name))
@@ -197,7 +148,7 @@ if __name__ == "__main__":
     if args.bulk is not None and len(args.bulk):
         bulk_directory = args.bulk
         for d in os.listdir(bulk_directory):
-            preset_json = load_preset_json()
+            preset_json = Helpers.load_preset_json()
             sub_path = os.path.join(bulk_directory, d)
             if os.path.isdir(sub_path):
                 process_samples(sub_path, args.output, None)
