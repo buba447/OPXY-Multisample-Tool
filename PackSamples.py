@@ -153,7 +153,7 @@ def process_samples(input_dir, output_dir, preset_name):
     presets/subfolder/name.preset/patch.json
     """
 
-    filenames = os.listdir(input_dir)
+    filenames = [f for f in os.listdir(input_dir) if os.path.splitext(f)[-1].lower() in ['.wav', '.aiff']]
 
     if preset_name is None or len(preset_name) == 0:
         # Generate preset name from the sample
@@ -170,9 +170,8 @@ def process_samples(input_dir, output_dir, preset_name):
     keys = {}
 
     for filename in filenames:
-        if filename.lower().endswith(".wav"):
-            base_name, key = parse_filename(filename)
-            keys[key] = (base_name, os.path.join(input_dir, filename), filename)
+        base_name, key = parse_filename(filename)
+        keys[key] = (base_name, os.path.join(input_dir, filename), filename)
 
     last_key = 0
     for key in sorted(keys.keys()):
