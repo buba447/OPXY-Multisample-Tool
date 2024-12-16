@@ -9,6 +9,10 @@ This script is used to pack a collection of multisamples into an instrument pres
 - Packs JSON and Audio Files into the appropriate file structure for OPXY.
 - Use the --help flag to display usage information.
 
+## Dependencies
+
+- Python 3 (https://www.python.org/downloads/)
+- ffmpeg (https://www.ffmpeg.org)
 
 ## Sample Prep
 

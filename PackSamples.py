@@ -79,7 +79,7 @@ def parse_filename(filename):
     """
     Parse the filename to extract the base name and key.
     """
-    match = re.match(r"^(.*?)-?(\d+)(?:-\d+)?\.wav$", filename, re.IGNORECASE)
+    match = re.match(r"^(.*?)-(\d+)", filename, re.IGNORECASE)
     if not match:
         raise ValueError(f"Filename '{filename}' does not match the expected pattern.")
 
