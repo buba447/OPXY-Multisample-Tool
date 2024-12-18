@@ -70,21 +70,30 @@ The next step is to [copy the presets onto the OP-XY](#copying-presets-onto-the-
 The `PackSamples.py` script is useful for packing an existing folder of wav files into a multisample instrument for the OP-XY
 
 ### Prep
-Place your samples in a folder. The naming format for samples follows a format like:
+
+The sample packer expects a list of wav files, one for each note key you want sampled. The OP-XY will automatically fill in the missing notes by pitch bending the nearest wav file.
+
+Samples can be named in a couple of ways:
+
+1. By midi note number. Where the note number is a number from 0-127. With 0 being C-1, 127 being G9 and 60 is C4.
 
 `Sample Name-[Note Number].wav`
-
-Where the note number is a number from 0-127. With 0 being C-1, 127 being G9 and 60 is C4.
-
-Like so:
-
 ```
 "InputFolder\My Awesome Sample-48.wav"  < C3
 "InputFolder\My Awesome Sample-60.wav"  < Middle C
-"InputFolder\My Awesome Sample-64.wav"  < E4
+"InputFolder\My Awesome Sample-65.wav"  < E#4
 ```
 
-Sometimes samples are named with a note and a velocity (`My Awesome Sample-48-127.wav`) 
+2. By note name and octave.
+
+`Sample Name-[Note Name].wav`
+```
+"InputFolder\My Awesome Sample-C3.wav"
+"InputFolder\My Awesome Sample-Eb7.wav"
+"InputFolder\My Awesome Sample-G#-1.wav"
+```
+
+Sometimes samples are named with a note and a velocity (`My Awesome Sample-48-127.wav`).
 The OP-XY does not currently support velocity mappings.
 There is no need to rename these. The script will automatically choose the highest velocity for each note.
 

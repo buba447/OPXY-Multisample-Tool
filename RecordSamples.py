@@ -61,10 +61,34 @@ def record_samples(
     preset_name,
     output_directory,
     samplerate=44100,
-    midi_output=None
+    note_velocity=112,
+    record_delay=0,
+    sustain_duration=None,
+    midi_output=None,
+    loop_start=None,
+    loop_end=None,
+    loop_crossfade=0
 ):
     if midi_output is None:
         midi_output = mido.open_output(list_midi_devices()[midi_device_index])
+
+    if sustain_duration is None:
+        sustain_duration = record_duration * 0.33
+
+    if loop_start:
+        loop_start = loop_start * samplerate
+    else:
+        loop_start = 0
+
+    if loop_end:
+        loop_end = loop_end * samplerate
+    else:
+        loop_end = sustain_duration * samplerate
+
+    loop_crossfade = loop_crossfade * samplerate
+
+    record_delay = max(0, record_delay)
+
     audo_device = list_audio_devices()[audio_device_index]['index']
 
     preset_name = Helpers.sanitize_name(preset_name)
@@ -83,6 +107,21 @@ def record_samples(
         filename = f"{base_name}.wav"
         output_file = os.path.join(output_directory, filename)
         print(f'Recording Note {key} to {output_file}')
+
+        note_on = False
+        note_off = False
+        if record_delay > 0:
+            midi_output.send(Message('note_on', channel=midi_channel, note=key, velocity=note_velocity))
+            note_on = True
+            if record_delay > sustain_duration:
+                time.sleep(sustain_duration)
+                midi_output.send(Message('note_off', channel=midi_channel, note=key, velocity=0))
+                note_off = True
+                time.sleep(record_delay - sustain_duration)
+            else:
+                time.sleep(record_delay)
+            sustain_duration = sustain_duration - record_delay
+
         audio_data = sd.rec(
             int(record_duration * samplerate),
             samplerate=samplerate,
@@ -90,15 +129,27 @@ def record_samples(
             dtype='float32',
             mapping=audio_channels
         )
+        if note_on is False:
+            midi_output.send(Message('note_on', channel=midi_channel, note=key, velocity=note_velocity))
 
-        midi_output.send(Message('note_on', channel=midi_channel, note=key, velocity=112))
-        time.sleep(record_duration * 0.33)
-        midi_output.send(Message('note_off', channel=midi_channel, note=key, velocity=0))
+        if note_off is False:
+            time.sleep(sustain_duration)
+            midi_output.send(Message('note_off', channel=midi_channel, note=key, velocity=0))
 
         sd.wait()  # Wait until recording is finished
 
         sf.write(output_file, audio_data, samplerate)
-        metadata = Helpers.sample_metadata(samplerate*record_duration, filename, key, last_key, key)
+        metadata = Helpers.sample_metadata(
+            frame_count=samplerate*record_duration,
+            output_basename=filename,
+            hi_key=key,
+            low_key=last_key,
+            center=key,
+            loop_crossfade=loop_crossfade,
+            loop_start=loop_start,
+            loop_end=loop_end
+        )
+
         last_key = key + 1
         preset_json['regions'].append(metadata)
 
@@ -140,11 +191,45 @@ def start_interactive():
         audio_channels = (1, 2) if audio_device['max_input_channels'] == 2 else (1, 1)
 
     print("Record Settings")
-    start_key = int(input("Enter start key (0-127 Middle C is 60): "))
-    end_key = int(input("Enter end key (0-127 Middle C is 60): "))
+    start_key = input("Enter start key (Midi Number 0-127 or C1, Gb3, E#2): ")
+    if start_key.isnumeric():
+        start_key = int(start_key)
+    else:
+        start_key = Helpers.note_string_to_midi_value(start_key)
+
+    end_key = input("Enter end key (Midi Number 0-127 or C1, Gb3, E#2): ")
+    if end_key.isnumeric():
+        end_key = int(end_key)
+    else:
+        end_key = Helpers.note_string_to_midi_value(end_key)
     interval = int(input("How many semi-tones between samples (1 will record a sample for every key): "))
     record_duration = float(input("How many seconds to record each note (EG: 1.2): "))
     print("\n")
+    adv_enabaled = input("Advanced Options (y/n)?")
+    print("\n")
+
+    note_velocity = 112
+    record_delay = 0
+    sustain_duration = None
+    loop_start = None
+    loop_end = None
+    loop_crossfade = 0
+
+    if adv_enabaled.lower().startswith('y'):
+        record_delay = float(input("Record delay duration in seconds (EG: 1.2): "))
+        sustain_duration = float(input("Sustain duration in seconds (EG: 1.2): "))
+        note_velocity = int(input("Note Velocity (1-127): "))
+
+        loop_start = float(input("Loop start in seconds (EG: 1.2): "))
+        loop_end = float(input("Loop end in seconds (EG: 1.2): "))
+        loop_crossfade = float(input("Loop crossfade in seconds (EG: 1.2): "))
+        print("\n")
+        #
+        # |///////|  Midi Sustain Time
+        # |   |////////|   Loop Point
+        # |   /|      |\   Crossfade
+        # |----------------------| 3.3 Record Time
+
     print("Output Settings")
     preset_name = input("Preset Name:")
     output_directory = input("Output Directory:")
@@ -162,7 +247,13 @@ def start_interactive():
         record_duration=record_duration,
         preset_name=preset_name,
         output_directory=output_directory,
-        midi_output=midi_output
+        midi_output=midi_output,
+        note_velocity=note_velocity,
+        record_delay=record_delay,
+        sustain_duration=sustain_duration,
+        loop_start=loop_start,
+        loop_end=loop_end,
+        loop_crossfade=loop_crossfade
     )
 
 if __name__ == "__main__":
