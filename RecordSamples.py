@@ -106,7 +106,7 @@ def record_samples(
         base_name = f"{preset_name}-{key:03}"
         filename = f"{base_name}.wav"
         output_file = os.path.join(output_directory, filename)
-        print(f'Recording Note {key} to {output_file}')
+        print(f'Recording Note {Helpers.midi_note_to_string(key)} to {output_file}')
 
         note_on = False
         note_off = False
