@@ -40,7 +40,7 @@ def parse_filename(filename):
     raise ValueError(f"Filename '{filename}' does not match the expected pattern.")
 
 
-def sample_metadata(frame_count, output_basename, hi_key, low_key, center, loop_crossfade=0, loop_start=None, loop_end=None):
+def sample_metadata(frame_count, output_basename, hi_key, low_key, center, sample_start=0, loop_crossfade=0, loop_start=None, loop_end=None):
     """
     Generate the JSON metadata for the given WAV file and key.
     """
@@ -51,6 +51,7 @@ def sample_metadata(frame_count, output_basename, hi_key, low_key, center, loop_
 
     metadata = {
         "framecount": frame_count,
+        "gain": 0,
         "hikey": hi_key,
         "lokey": low_key,
         "loop.crossfade": loop_crossfade,
@@ -61,6 +62,7 @@ def sample_metadata(frame_count, output_basename, hi_key, low_key, center, loop_
         "reverse": False,
         "sample": output_basename,
         "sample.end": int(frame_count),
+        "sample.start": int(sample_start),
         "tune": 0
     }
     return metadata
@@ -95,14 +97,7 @@ def note_string_to_midi_value(note):
     return midi_note
 
 
-import re
-
-# Regex pattern to match the music notes
-pattern = r'\b[A-G](?:b|#|-)?-?\d\b'
-
-testString = "Rhodes Mark 1-096-127 Ab5.WAV"
-
-print(parse_filename(testString))
+# print(note_string_to_midi_value('C1'))
 # match = re.search(pattern, testString)
 # if match:
 #     print(note_string_to_midi_value(match.group()))

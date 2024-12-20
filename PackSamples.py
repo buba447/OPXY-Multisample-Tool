@@ -123,19 +123,28 @@ def process_samples(input_dir, output_dir, preset_name):
         base_name, key = Helpers.parse_filename(filename)
         keys[key] = (base_name, os.path.join(input_dir, filename), filename)
 
-    last_key = 0
-    for key in sorted(keys.keys()):
+    last_key = 127
+    key_metadata = []
+    for key in sorted(keys.keys(), reverse=True):
         base_name, wav_file, filename = keys[key]
         wav_name = Helpers.sanitize_name(filename)
         sample_rate, frame_count = get_wav_info(wav_file)
+        print('Packing key ', os.path.basename(wav_file), key)
         try:
-            metadata = Helpers.sample_metadata(frame_count, wav_name, key, last_key, key)
-            last_key = key + 1
-            preset_json['regions'].append(metadata)
+            metadata = Helpers.sample_metadata(
+                frame_count=frame_count,
+                output_basename=wav_name,
+                low_key=key,
+                hi_key=last_key,
+                center=key,
+                sample_start=0.5*sample_rate)
+            last_key = key - 1
+            key_metadata.append(metadata)
             shutil.copy(wav_file, os.path.join(preset_directory, wav_name))
         except Exception as e:
             print(f"Error processing {wav_file}: {e}")
-
+    key_metadata.reverse()
+    preset_json['regions'] = key_metadata
     json_file = os.path.join(preset_directory, 'patch.json')
 
     # Write JSON file
@@ -154,3 +163,4 @@ if __name__ == "__main__":
                 process_samples(sub_path, args.output, None)
     else:
         process_samples(args.input, args.output, args.name)
+
