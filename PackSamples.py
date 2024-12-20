@@ -57,6 +57,8 @@ parser.add_argument("--input", required=False, help="Directory containing WAV fi
 parser.add_argument("--bulk", required=False, help="Directory containing nested directories of WAV files for processing.")
 parser.add_argument("--output", required=True, help="Directory to save the generated multisample preset.")
 parser.add_argument("--name", required=False, help="Name of the preset.")
+parser.add_argument("--sample_rate", required=False, type=int, help="Force a sample rate. Will re-encode if the sample rate of the source does not match.")
+parser.add_argument("--sample_start", required=False, type=float, help="Time in seconds for the sample start point. Useful for samples that have a bit of silence at the beginning.")
 
 args = parser.parse_args()
 
@@ -95,13 +97,29 @@ def get_wav_info(filename):
     return sample_rate, frame_count
 
 
-def process_samples(input_dir, output_dir, preset_name):
+def reencode_wav_file(input_file, output_file, sample_rate):
+    # ffmpeg -i input.wav -ar 44100 output.wav
+    cmd = [
+        "ffmpeg",
+        "-i", input_file,
+        "-ar", f'{sample_rate}',
+        output_file
+    ]
+    result = subprocess.run(cmd, capture_output=True, text=True)
+    if result.returncode != 0:
+        raise RuntimeError(f"Error processing {input_file}: {result.stderr}")
+
+
+
+def process_samples(input_dir, output_dir, preset_name, sample_rate, sample_start):
     """
     Process all WAV files in the input directory.
 
     According to the XY how-to samples are saved like
     presets/subfolder/name.preset/patch.json
     """
+    if sample_start is None:
+        sample_start = 0
 
     filenames = [f for f in os.listdir(input_dir) if os.path.splitext(f)[-1].lower() in ['.wav', '.aiff']]
 
@@ -123,27 +141,36 @@ def process_samples(input_dir, output_dir, preset_name):
         base_name, key = Helpers.parse_filename(filename)
         keys[key] = (base_name, os.path.join(input_dir, filename), filename)
 
-    last_key = 127
+    last_key = 0
     key_metadata = []
-    for key in sorted(keys.keys(), reverse=True):
+    for key in sorted(keys.keys()):
         base_name, wav_file, filename = keys[key]
         wav_name = Helpers.sanitize_name(filename)
-        sample_rate, frame_count = get_wav_info(wav_file)
+        file_sample_rate, frame_count = get_wav_info(wav_file)
+        if sample_rate is None:
+            sample_rate = file_sample_rate
+        copy_file = True
+        if sample_rate != file_sample_rate:
+            print('Re-encoding', os.path.basename(wav_file))
+            copy_file = False
+            output_file = os.path.join(preset_directory, wav_name)
+            input_file = wav_file
+            reencode_wav_file(input_file, output_file, sample_rate)
         print('Packing key ', os.path.basename(wav_file), key)
         try:
             metadata = Helpers.sample_metadata(
                 frame_count=frame_count,
                 output_basename=wav_name,
-                low_key=key,
-                hi_key=last_key,
+                low_key=last_key,
+                hi_key=key,
                 center=key,
-                sample_start=0.5*sample_rate)
-            last_key = key - 1
+                sample_start=sample_start*sample_rate)
+            last_key = key + 1
             key_metadata.append(metadata)
-            shutil.copy(wav_file, os.path.join(preset_directory, wav_name))
+            if copy_file:
+                shutil.copy(wav_file, os.path.join(preset_directory, wav_name))
         except Exception as e:
             print(f"Error processing {wav_file}: {e}")
-    key_metadata.reverse()
     preset_json['regions'] = key_metadata
     json_file = os.path.join(preset_directory, 'patch.json')
 
@@ -160,7 +187,7 @@ if __name__ == "__main__":
             preset_json = Helpers.load_preset_json()
             sub_path = os.path.join(bulk_directory, d)
             if os.path.isdir(sub_path):
-                process_samples(sub_path, args.output, None)
+                process_samples(sub_path, args.output, None, args.sample_rate, args.sample_start)
     else:
-        process_samples(args.input, args.output, args.name)
+        process_samples(args.input, args.output, args.name, args.sample_rate, args.sample_start)
 
