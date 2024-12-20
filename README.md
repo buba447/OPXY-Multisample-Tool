@@ -119,6 +119,8 @@ The next step is to [copy the presets onto the OP-XY](#copying-presets-onto-the-
 - `--output` The output directory where the preset instruments are copied. Required.
 - `--name` The name of the preset. Optional. If no name is passed the name is inferred from the sample file names.
 - `--bulk` Pass a folder containing multiple subfolders of samples into the bulk command along with an output directory.
+- `--sample_rate` Forces re-encoding of samples to a specific sample rate. TIP The OP-XY seems to prefer samples around 22050. 
+- `--sample_start` Time in seconds for the sample start point. Useful for samples that have a bit of silence at the beginning.
 The tool will then run the pack command for each subfolder automatically.
 
 ## Copying Presets onto the OPXY

@@ -214,6 +214,7 @@ def start_interactive():
     loop_start = None
     loop_end = None
     loop_crossfade = 0
+    samplerate = 22050
 
     if adv_enabaled.lower().startswith('y'):
         record_delay = float(input("Record delay duration in seconds (EG: 1.2): "))
@@ -223,6 +224,7 @@ def start_interactive():
         loop_start = float(input("Loop start in seconds (EG: 1.2): "))
         loop_end = float(input("Loop end in seconds (EG: 1.2): "))
         loop_crossfade = float(input("Loop crossfade in seconds (EG: 1.2): "))
+        samplerate = int(input("Sample Rate: "))
         print("\n")
         #
         # |///////|  Midi Sustain Time
@@ -253,7 +255,8 @@ def start_interactive():
         sustain_duration=sustain_duration,
         loop_start=loop_start,
         loop_end=loop_end,
-        loop_crossfade=loop_crossfade
+        loop_crossfade=loop_crossfade,
+        samplerate=samplerate
     )
 
 if __name__ == "__main__":
