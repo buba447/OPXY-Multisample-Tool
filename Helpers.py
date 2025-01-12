@@ -68,7 +68,7 @@ def sample_metadata(frame_count, output_basename, hi_key, low_key, center, sampl
     return metadata
 
 
-NOTE_OFFSET = [21, 23, 12, 14, 16, 17, 19]
+NOTE_OFFSET = [33, 35, 24, 26, 28, 29, 31]
 
 NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
 
@@ -98,6 +98,7 @@ def note_string_to_midi_value(note):
 
 
 # print(note_string_to_midi_value('C1'))
+# print(midi_note_to_string(note_string_to_midi_value('C1')))
 # match = re.search(pattern, testString)
 # if match:
 #     print(note_string_to_midi_value(match.group()))
